@@ -6,7 +6,7 @@ class ArbitragemPartida(db.Model):
     
     id_arbitragem = db.Column(db.Integer, primary_key=True)
     id_partida = db.Column(db.Integer, db.ForeignKey('partidas.id'), nullable=False)
-    id_arbitro = db.Column(db.Integer, db.ForeignKey('arbitros.id'), nullable=False)
+    id_arbitro = db.Column(db.Integer, db.ForeignKey('arbitros.id_arbitro'), nullable=False)
     funcao = db.Column(db.String(50), nullable=False)  # e.g., 'arbitro_principal', 'assistente_1', 'assistente_2'
 
     partida = db.relationship('Partida', back_populates='arbitragem')

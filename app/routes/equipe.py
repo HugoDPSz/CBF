@@ -8,6 +8,7 @@ bp_equipe = Blueprint('equipes', __name__, url_prefix='/equipes')
 def listar_equipes():
     equipes = Equipe.query.all()
     return jsonify([{
+        'id_equipe' : e.id_equipe,
         'nome' : e.nome,
         'sigla' : e.sigla,
         'cidade' : e.cidade,
