@@ -12,5 +12,7 @@ class Arbitro(db.Model):
     data_nascimento = db.Column(db.Date, nullable=False)
     experiencia = db.Column(db.Integer, nullable=False)  # Anos de experiência
 
+    arbitragems = db.relationship('ArbitragemPartida', back_populates='arbitro')
+
     def __repr__(self):
         return f'<Arbitro {self.nome} - Nacionalidade: {self.nacionalidade}>'

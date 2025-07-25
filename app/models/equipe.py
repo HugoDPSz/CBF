@@ -11,5 +11,8 @@ class Equipe(db.Model):
     estado = db.Column(db.String(50), nullable=False)
     data_fundacao = db.Column(db.Date, nullable=False)
 
+    partidas_em_casa = db.relationship('Partida', back_populates='equipe_casa', foreign_keys='Partida.equipe_casa_id')
+    partidas_como_visitante = db.relationship('Partida', back_populates='equipe_visitante', foreign_keys='Partida.equipe_visitante_id')
+    
     def __repr__(self):
         return f'<Equipe {self.nome} - {self.cidade}, {self.estado}>'

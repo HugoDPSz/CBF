@@ -6,8 +6,8 @@ class Escalacao(db.Model):
     
     id_escalacao = db.Column(db.Integer, primary_key=True)
     id_partida = db.Column(db.Integer, db.ForeignKey('partidas.id'), nullable=False)
-    id_equipe = db.Column(db.Integer, db.ForeignKey('equipes.id'), nullable=False)
-    id_jogador = db.Column(db.Integer, db.ForeignKey('jogadores.id'), nullable=False)
+    id_equipe = db.Column(db.Integer, db.ForeignKey('equipes.id_equipe'), nullable=False)
+    id_jogador = db.Column(db.Integer, db.ForeignKey('jogadores.id_jogador'), nullable=False)
     numero_camisa = db.Column(db.Integer, nullable=False)
 
     partida = db.relationship('Partida', back_populates='escalacao')

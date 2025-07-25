@@ -15,7 +15,7 @@ def listar_jogadores():
         'peso' : j.peso,
         'data_nascimento' : j.data_nascimento.isoformat() if j.data_nascimento else None,
         'nacionalidade' : j.nacionalidade,
-        'pe_prefirido' : j.pe_preferido
+        'pe_prefirido' : j.pe_preferido.name
     }for j in jogadores])
 
 @bp_jogador.route('/<int:id>', methods=['GET'])

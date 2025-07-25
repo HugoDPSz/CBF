@@ -20,6 +20,6 @@ class Jogador(db.Model):
     pe_preferido = db.Column(db.Enum(PePreferido), nullable=False, default=PePreferido.DIREITO)
     
     participacoes = db.relationship('Escalacao', back_populates='jogador', cascade="all, delete-orphan")
-
+    eventos = db.relationship('EventosPartida', back_populates='jogador') 
     def __repr__(self):
         return f'<Jogador {self.nome} - {self.posicao}>'

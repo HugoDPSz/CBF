@@ -6,7 +6,7 @@ class EventosPartida(db.Model):
     
     id_evento = db.Column(db.Integer, primary_key=True)
     id_partida = db.Column(db.Integer, db.ForeignKey('partidas.id'), nullable=False)
-    id_jogador = db.Column(db.Integer, db.ForeignKey('jogadores.id'), nullable=True)
+    id_jogador = db.Column(db.Integer, db.ForeignKey('jogadores.id_jogador'), nullable=True)
     tipo_evento = db.Column(db.String(50), nullable=False)  # e.g., 'gol', 'cartao_amarelo', 'substituicao'
     minuto = db.Column(db.Integer, nullable=False)
     descricao = db.Column(db.String(255), nullable=True)  # Descrição opcional do evento
