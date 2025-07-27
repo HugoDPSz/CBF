@@ -1,70 +1,107 @@
 from flask import Blueprint, request, jsonify
-from app.models.partida import db, Partida
+from app.models import db
 from datetime import datetime
+from sqlalchemy import text
 
 bp_partida = Blueprint('partidas', __name__, url_prefix='/partidas')
 
 @bp_partida.route('/', methods=['GET'])
 def listar_partidas():
-    partidas = Partida.query.all()
-    return jsonify([{
-        'id': p.id,
-        'data_hora': p.data_hora.isoformat(),
-        'id_competicao': p.id_competicao,
-        'estadio': p.estadio,
-        'local': p.local,
-        'equipe_casa_id': p.equipe_casa_id,
-        'equipe_visitante_id': p.equipe_visitante_id,
-        'placar_casa': p.placar_casa,
-        'placar_visitante': p.placar_visitante
-    } for p in partidas])
+    query = text("""
+        SELECT p.id, p.data_hora, p.estadio, p.local,
+               p.placar_casa, p.placar_visitante,
+               ec.nome as equipe_casa_nome,
+               ev.nome as equipe_visitante_nome,
+               c.nome as competicao_nome
+        FROM partidas p
+        JOIN equipes ec ON p.equipe_casa_id = ec.id_equipe
+        JOIN equipes ev ON p.equipe_visitante_id = ev.id_equipe
+        JOIN competicoes c ON p.id_competicao = c.id_competicao
+    """)
+    result = db.session.execute(query).fetchall()
+    
+    partidas = [{
+        'id': row.id,
+        'data_hora': row.data_hora.isoformat(),
+        'estadio': row.estadio,
+        'local': row.local,
+        'placar_casa': row.placar_casa,
+        'placar_visitante': row.placar_visitante,
+        'equipe_casa': row.equipe_casa_nome,
+        'equipe_visitante': row.equipe_visitante_nome,
+        'competicao': row.competicao_nome
+    } for row in result]
+    
+    return jsonify(partidas)
 
 @bp_partida.route('/<int:id>', methods=['GET'])
 def buscar_partida_por_id(id):
-    p = Partida.query.get_or_404(id)
+    query = text("SELECT * FROM partidas WHERE id = :id")
+    result = db.session.execute(query, {"id": id}).first()
+
+    if result is None:
+        return jsonify({'erro': 'Partida não encontrada'}), 404
+        
     return jsonify({
-        'id': p.id,
-        'data_hora': p.data_hora.isoformat(),
-        'id_competicao': p.id_competicao,
-        'estadio': p.estadio,
-        'local': p.local,
-        'equipe_casa_id': p.equipe_casa_id,
-        'equipe_visitante_id': p.equipe_visitante_id,
-        'placar_casa': p.placar_casa,
-        'placar_visitante': p.placar_visitante
+        'id': result.id,
+        'data_hora': result.data_hora.isoformat(),
+        'id_competicao': result.id_competicao,
+        'estadio': result.estadio,
+        'local': result.local,
+        'equipe_casa_id': result.equipe_casa_id,
+        'equipe_visitante_id': result.equipe_visitante_id,
+        'placar_casa': result.placar_casa,
+        'placar_visitante': result.placar_visitante
     })
 
 @bp_partida.route('/', methods=['POST'])
 def criar_partida():
     data = request.json
     try:
-        partida = Partida(
-            data_hora=datetime.fromisoformat(data['data_hora']),
-            id_competicao=data['id_competicao'],
-            estadio=data['estadio'],
-            local=data['local'],
-            equipe_casa_id=data['equipe_casa_id'],
-            equipe_visitante_id=data['equipe_visitante_id'],
-            placar_casa=data.get('placar_casa'),
-            placar_visitante=data.get('placar_visitante')
-        )
-        db.session.add(partida)
+        query = text("""
+            INSERT INTO partidas (data_hora, id_competicao, estadio, local, equipe_casa_id, equipe_visitante_id, placar_casa, placar_visitante)
+            VALUES (:data_hora, :id_competicao, :estadio, :local, :equipe_casa_id, :equipe_visitante_id, :placar_casa, :placar_visitante)
+            RETURNING id;
+        """)
+        
+        result = db.session.execute(query, {
+            "data_hora": datetime.fromisoformat(data['data_hora']),
+            "id_competicao": data['id_competicao'],
+            "estadio": data['estadio'],
+            "local": data['local'],
+            "equipe_casa_id": data['equipe_casa_id'],
+            "equipe_visitante_id": data['equipe_visitante_id'],
+            "placar_casa": data.get('placar_casa'),
+            "placar_visitante": data.get('placar_visitante')
+        }).scalar_one()
+        
         db.session.commit()
-        return jsonify({'id': partida.id}), 201
+        return jsonify({'id': result}), 201
     except Exception as e:
+        db.session.rollback()
         return jsonify({'erro': str(e)}), 400
 
-@bp_partida.route('/<int:id>', methods=['PUT'])
-def atualizar_partida(id):
-    p = Partida.query.get_or_404(id)
+@bp_partida.route('/<int:id>/placar', methods=['PUT'])
+def atualizar_placar_partida(id):
     data = request.json
     try:
-        p.data_hora = datetime.fromisoformat(data.get('data_hora', p.data_hora.isoformat()))
-        p.estadio = data.get('estadio', p.estadio)
-        p.local = data.get('local', p.local)
-        p.placar_casa = data.get('placar_casa', p.placar_casa)
-        p.placar_visitante = data.get('placar_visitante', p.placar_visitante)
+        query = text("""
+            UPDATE partidas
+            SET placar_casa = :placar_casa, placar_visitante = :placar_visitante
+            WHERE id = :id
+        """)
+        
+        result = db.session.execute(query, {
+            "id": id,
+            "placar_casa": data.get('placar_casa'),
+            "placar_visitante": data.get('placar_visitante')
+        })
+
+        if result.rowcount == 0:
+            return jsonify({'erro': 'Partida não encontrada'}), 404
+            
         db.session.commit()
-        return jsonify({'id': p.id, 'mensagem': 'Partida atualizada com sucesso!'})
+        return jsonify({'mensagem': 'Placar da partida atualizado com sucesso'}), 200
     except Exception as e:
+        db.session.rollback()
         return jsonify({'erro': str(e)}), 400

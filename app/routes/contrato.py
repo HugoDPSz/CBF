@@ -1,6 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.models.contrato import db, Contrato
-from app.models.jogador import Jogador
+from app.models import db
 from datetime import datetime
 from sqlalchemy import text
 
@@ -8,74 +7,105 @@ bp_contrato = Blueprint('contratos', __name__, url_prefix='/contratos')
 
 @bp_contrato.route('/', methods=['GET'])
 def listar_contratos():
-    contratos = Contrato.query.all()
-    return jsonify([{
-        'id': c.id_contrato,
-        'data_inicio': c.data_inicio.isoformat() if c.data_inicio else None,
-        'data_fim': c.data_fim.isoformat() if c.data_fim else None,
-        'salario': c.salario,
-        'id_jogador': c.id_jogador,
-        'id_equipe': c.id_equipe
-    } for c in contratos])
-
-@bp_contrato.route('/<int:id>', methods=['GET'])
-def buscar_contrato_por_id_jogador(id):
+    query = text("SELECT * FROM contratos")
+    result = db.session.execute(query).fetchall()
     
-    c = Contrato.query.filter_by(id_jogador=id).first_or_404()
-    return jsonify({
+    contratos = [{
         'id': c.id_contrato,
         'data_inicio': c.data_inicio.isoformat() if c.data_inicio else None,
         'data_fim': c.data_fim.isoformat() if c.data_fim else None,
         'salario': c.salario,
+        'status': c.status,
         'id_jogador': c.id_jogador,
         'id_equipe': c.id_equipe
+    } for c in result]
+    
+    return jsonify(contratos)
+
+@bp_contrato.route('/jogador/<int:id_jogador>', methods=['GET'])
+def buscar_contrato_por_id_jogador(id_jogador):
+    query = text("SELECT * FROM contratos WHERE id_jogador = :id_jogador AND status = 'Ativo' ORDER BY data_inicio DESC")
+    result = db.session.execute(query, {"id_jogador": id_jogador}).first()
+    
+    if result is None:
+        return jsonify({'erro': 'Nenhum contrato ativo encontrado para este jogador'}), 404
+        
+    return jsonify({
+        'id': result.id_contrato,
+        'data_inicio': result.data_inicio.isoformat() if result.data_inicio else None,
+        'data_fim': result.data_fim.isoformat() if result.data_fim else None,
+        'salario': result.salario,
+        'status': result.status,
+        'id_jogador': result.id_jogador,
+        'id_equipe': result.id_equipe
     })
 
 @bp_contrato.route('/', methods=['POST'])
 def criar_contrato():
     data = request.json
     try:
-        contrato = Contrato(
-            data_inicio=datetime.strptime(data['data_inicio'], '%Y-%m-%d').date(),
-            data_fim=datetime.strptime(data['data_fim'], '%Y-%m-%d').date(),
-            salario=data['salario'],
-            id_jogador=data['id_jogador'],
-            id_equipe=data['id_equipe']
-        )
-        db.session.add(contrato)
+        query = text("""
+            INSERT INTO contratos (id_jogador, id_equipe, data_inicio, data_fim, salario, status)
+            VALUES (:id_jogador, :id_equipe, :data_inicio, :data_fim, :salario, :status)
+            RETURNING id_contrato;
+        """)
+        
+        result = db.session.execute(query, {
+            "id_jogador": data['id_jogador'],
+            "id_equipe": data['id_equipe'],
+            "data_inicio": datetime.strptime(data['data_inicio'], '%Y-%m-%d').date(),
+            "data_fim": datetime.strptime(data['data_fim'], '%Y-%m-%d').date(),
+            "salario": data['salario'],
+            "status": data.get('status', 'Ativo')
+        }).scalar_one()
+        
         db.session.commit()
-        return jsonify({'id': contrato.id_contrato}), 201
+        return jsonify({'id': result}), 201
     except Exception as e:
+        db.session.rollback()
         return jsonify({'erro': str(e)}), 400
 
 @bp_contrato.route('/<int:id>', methods=['PUT'])
 def atualizar_contrato(id):
-    c = Contrato.query.get_or_404(id)
     data = request.json
     try:
-        c.data_inicio = datetime.strptime(data['data_inicio'], '%Y-%m-%d').date()
-        c.data_fim = datetime.strptime(data['data_fim'], '%Y-%m-%d').date()
-        c.salario = data['salario']
-        c.id_jogador = data['id_jogador']
-        c.id_equipe = data['id_equipe']
-        db.session.commit()
-        return jsonify({
-            'id': c.id_contrato,
-            'data_inicio': c.data_inicio.isoformat(),
-            'data_fim': c.data_fim.isoformat(),
-            'salario': c.salario,
-            'id_jogador': c.id_jogador,
-            'id_equipe': c.id_equipe
+        query = text("""
+            UPDATE contratos
+            SET data_inicio = :data_inicio, data_fim = :data_fim, salario = :salario, status = :status
+            WHERE id_contrato = :id
+        """)
+        
+        result = db.session.execute(query, {
+            "id": id,
+            "data_inicio": datetime.strptime(data['data_inicio'], '%Y-%m-%d').date(),
+            "data_fim": datetime.strptime(data['data_fim'], '%Y-%m-%d').date(),
+            "salario": data['salario'],
+            "status": data['status']
         })
+        
+        if result.rowcount == 0:
+            return jsonify({'erro': 'Contrato não encontrado'}), 404
+            
+        db.session.commit()
+        return jsonify({'mensagem': 'Contrato atualizado com sucesso'}), 200
     except Exception as e:
+        db.session.rollback()
         return jsonify({'erro': str(e)}), 400
 
 @bp_contrato.route('/<int:id>', methods=['DELETE'])
 def deletar_contrato(id):
-    contrato = Contrato.query.get_or_404(id)
-    db.session.delete(contrato)
-    db.session.commit()
-    return jsonify({'mensagem': 'Contrato excluído com sucesso'})
+    try:
+        query = text("DELETE FROM contratos WHERE id_contrato = :id")
+        result = db.session.execute(query, {"id": id})
+        
+        if result.rowcount == 0:
+            return jsonify({'erro': 'Contrato não encontrado'}), 404
+            
+        db.session.commit()
+        return jsonify({'mensagem': 'Contrato excluído com sucesso'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'erro': str(e)}), 400
 
 @bp_contrato.route('/registrar-via-procedure', methods=['POST'])
 def criar_contrato_procedure():

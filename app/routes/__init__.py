@@ -4,6 +4,9 @@ from .competicao import bp_competicao
 from .contrato import bp_contrato
 from .arbitro import bp_arbitro  
 from .partida import bp_partida  
+from .escalacao import bp_escalacao
+from .arbitragem_partida import bp_arbitragem
+from .eventos_partidas import bp_eventos
 
 def init_app(app):
     app.register_blueprint(bp_jogador)
@@ -12,3 +15,6 @@ def init_app(app):
     app.register_blueprint(bp_contrato)
     app.register_blueprint(bp_arbitro)  
     app.register_blueprint(bp_partida)  
+    app.register_blueprint(bp_escalacao)
+    app.register_blueprint(bp_arbitragem)
+    app.register_blueprint(bp_eventos)
