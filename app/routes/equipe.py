@@ -1,69 +1,103 @@
 from flask import Blueprint, request, jsonify
-from app.models.equipe import db, Equipe
+from app.models import db
 from datetime import datetime
+from sqlalchemy import text
 
 bp_equipe = Blueprint('equipes', __name__, url_prefix='/equipes')
 
 @bp_equipe.route('/', methods=['GET'])
 def listar_equipes():
-    equipes = Equipe.query.all()
-    return jsonify([{
-        'id_equipe' : e.id_equipe,
-        'nome' : e.nome,
-        'sigla' : e.sigla,
-        'cidade' : e.cidade,
-        'estado' : e.estado,
-        'data_fundacao' : e.data_fundacao.isoformat() if e.data_fundacao else None
-    }for e in equipes])
+    query = text("SELECT * FROM equipes")
+    result = db.session.execute(query).fetchall()
+    
+    equipes = [{
+        'id_equipe': row.id_equipe,
+        'nome': row.nome,
+        'sigla': row.sigla,
+        'cidade': row.cidade,
+        'estado': row.estado,
+        'data_fundacao': row.data_fundacao.isoformat() if row.data_fundacao else None
+    } for row in result]
+    
+    return jsonify(equipes)
 
-@bp_equipe.route('/<int:id>', methods = ['GET'])
+@bp_equipe.route('/<int:id>', methods=['GET'])
 def buscar_equipe_por_id(id):
-    e = Equipe.query.get_or_404(id)
+    query = text("SELECT * FROM equipes WHERE id_equipe = :id")
+    result = db.session.execute(query, {"id": id}).first()
+    
+    if result is None:
+        return jsonify({'erro': 'Equipe não encontrada'}), 404
+        
     return jsonify({
-        'nome' : e.nome,
-        'sigla' : e.sigla,
-        'cidade' : e.cidade,
-        'estado' : e.estado,
-        'data_fundacao' : e.data_fundacao.isoformat() if e.data_fundacao else None
+        'id_equipe': result.id_equipe,
+        'nome': result.nome,
+        'sigla': result.sigla,
+        'cidade': result.cidade,
+        'estado': result.estado,
+        'data_fundacao': result.data_fundacao.isoformat() if result.data_fundacao else None
     })
 
 @bp_equipe.route('/', methods=['POST'])
 def criar_equipe():
     data = request.json
     try:
-        equipe  = Equipe(
-            nome = data['nome'],
-            sigla = data['sigla'],
-            cidade = data['cidade'],
-            estado = data['estado'],
-            data_fundacao=datetime.strptime(data['data_fundacao'], '%Y-%m-%d').date()
-        )
-        db.session.add(equipe)
+        query = text("""
+            INSERT INTO equipes (nome, sigla, cidade, estado, data_fundacao)
+            VALUES (:nome, :sigla, :cidade, :estado, :data_fundacao)
+            RETURNING id_equipe;
+        """)
+        
+        result = db.session.execute(query, {
+            "nome": data['nome'],
+            "sigla": data['sigla'],
+            "cidade": data['cidade'],
+            "estado": data['estado'],
+            "data_fundacao": datetime.strptime(data['data_fundacao'], '%Y-%m-%d').date()
+        }).scalar_one()
+        
         db.session.commit()
-        return jsonify({'id': equipe.id_equipe}), 201
+        return jsonify({'id': result}), 201
     except Exception as e:
-        return jsonify({'erro' : str(e)}), 400
+        db.session.rollback()
+        return jsonify({'erro': str(e)}), 400
     
 @bp_equipe.route('/<int:id>', methods=['PUT'])
 def atualizar_equipe(id):
-    e = Equipe.query.get_or_404(id)
     data = request.json
+    try:
+        query = text("""
+            UPDATE equipes
+            SET nome = :nome, sigla = :sigla
+            WHERE id_equipe = :id
+        """)
+        
+        result = db.session.execute(query, {
+            "id": id,
+            "nome": data['nome'],
+            "sigla": data['sigla']
+        })
+        
+        if result.rowcount == 0:
+            return jsonify({'erro': 'Equipe não encontrada'}), 404
+            
+        db.session.commit()
+        return jsonify({'mensagem': 'Equipe atualizada com sucesso'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'erro': str(e)}), 400
 
-    e.nome = data['nome']
-    e.sigla = data['sigla']
-
-    db.session.commit()
-    return jsonify({
-        'nome' : e.nome,
-        'sigla' : e.sigla,
-        'cidade' : e.cidade,
-        'estado' : e.estado,
-        'data_fundacao' : e.data_fundacao.isoformat() if e.data_fundacao else None
-    })
-
-@bp_equipe.route('/<int:id>', methods=['PUT'])
+@bp_equipe.route('/<int:id>', methods=['DELETE'])
 def deletar_equipe(id):
-    equipe = Equipe.query.get_or_404(id)
-    db.session.delete(equipe)
-    db.session.commit()
-    return jsonify({'mensagem' : 'equipe excluída'})
+    try:
+        query = text("DELETE FROM equipes WHERE id_equipe = :id")
+        result = db.session.execute(query, {"id": id})
+        
+        if result.rowcount == 0:
+            return jsonify({'erro': 'Equipe não encontrada'}), 404
+            
+        db.session.commit()
+        return jsonify({'mensagem': 'Equipe excluída com sucesso'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'erro': str(e)}), 400
