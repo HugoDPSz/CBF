@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify
 from app.models.jogador import db, Jogador
 from datetime import datetime
+from sqlalchemy.sql import func
+from sqlalchemy import text
 
 bp_jogador = Blueprint('jogadores', __name__, url_prefix='/jogadores')
 
@@ -20,17 +22,25 @@ def listar_jogadores():
 
 @bp_jogador.route('/<int:id>', methods=['GET'])
 def buscar_jogador_por_id(id):
-    j = Jogador.query.get_or_404(id)
-    return jsonify({
-        'id' : j.id_jogador,
-        'nome' : j.nome,
-        'posicao' : j.posicao,
-        'altura' : j.altura,
-        'peso' : j.peso,
-        'data_nascimento' : j.data_nascimento.isoformat() if j.data_nascimento else None,
-        'nacionalidade' : j.nacionalidade,
-        'pe_prefirido' : j.pe_preferido
-    })
+    query = text("SELECT * FROM jogadores WHERE id_jogador = :id")
+    
+    result = db.session.execute(query, {"id": id}).first()
+    
+    if result is None:
+        return jsonify({'erro': 'Jogador não encontrado'}), 404
+
+    jogador_dict = {
+        'id': result.id_jogador,
+        'nome': result.nome,
+        'posicao': result.posicao,
+        'altura': result.altura,
+        'peso': result.peso,
+        'data_nascimento': result.data_nascimento.isoformat() if result.data_nascimento else None,
+        'nacionalidade': result.nacionalidade,
+        'pe_preferido': result.pe_preferido
+    }
+    
+    return jsonify(jogador_dict)
 
 @bp_jogador.route('/', methods=['POST'])
 def criar_jogador():
@@ -77,3 +87,17 @@ def deletar_jogador(id):
     db.session.delete(jogador)
     db.session.commit()
     return jsonify({'mensagem' : 'jogador excluído'})
+
+@bp_jogador.route('/<int:id>/com-idade', methods=['GET'])
+def buscar_jogador_com_idade(id):
+    j = Jogador.query.get_or_404(id)
+    
+    idade = db.session.query(func.calcular_idade(j.data_nascimento)).scalar()
+    
+    return jsonify({
+        'id' : j.id_jogador,
+        'nome' : j.nome,
+        'posicao' : j.posicao,
+        'data_nascimento' : j.data_nascimento.isoformat() if j.data_nascimento else None,
+        'idade': idade 
+    })

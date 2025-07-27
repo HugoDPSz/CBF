@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from app.models.contrato import db, Contrato
 from app.models.jogador import Jogador
 from datetime import datetime
+from sqlalchemy import text
 
 bp_contrato = Blueprint('contratos', __name__, url_prefix='/contratos')
 
@@ -75,3 +76,23 @@ def deletar_contrato(id):
     db.session.delete(contrato)
     db.session.commit()
     return jsonify({'mensagem': 'Contrato excluído com sucesso'})
+
+@bp_contrato.route('/registrar-via-procedure', methods=['POST'])
+def criar_contrato_procedure():
+    data = request.json
+    try:
+        db.session.execute(
+            text('CALL registrar_contrato(:id_jogador, :id_equipe, :data_inicio, :data_fim, :salario)'),
+            {
+                'id_jogador': data['id_jogador'],
+                'id_equipe': data['id_equipe'],
+                'data_inicio': data['data_inicio'],
+                'data_fim': data['data_fim'],
+                'salario': data['salario']
+            }
+        )
+        db.session.commit()
+        return jsonify({'mensagem': 'Contrato registrado com sucesso via procedure!'}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'erro': str(e)}), 400
