@@ -126,3 +126,14 @@ def criar_contrato_procedure():
     except Exception as e:
         db.session.rollback()
         return jsonify({'erro': str(e)}), 400
+    
+@bp_contrato.route('/<int:id>/rescindir', methods=['PUT'])
+def rescindir_contrato(id):
+    """Rescinde um contrato utilizando a stored procedure."""
+    try:
+        db.session.execute(text('CALL sp_rescindir_contrato(:id)'), {'id': id})
+        db.session.commit()
+        return jsonify({'mensagem': 'Contrato rescindido com sucesso!'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'erro': str(e)}), 400

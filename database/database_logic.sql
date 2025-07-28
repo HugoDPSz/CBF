@@ -51,3 +51,76 @@ BEGIN
     END IF;
 END$$
 DELIMITER ;
+
+-- Tabela de Log para salários
+CREATE TABLE IF NOT EXISTS log_alteracoes_salario (
+    id_log INT AUTO_INCREMENT PRIMARY KEY,
+    id_contrato INT,
+    salario_antigo FLOAT,
+    salario_novo FLOAT,
+    data_alteracao DATETIME,
+    FOREIGN KEY (id_contrato) REFERENCES contratos(id_contrato)
+);
+
+-- VIEW: Exibe informações de jogadores com contratos ativos
+CREATE OR REPLACE VIEW vw_jogadores_contratos_ativos AS
+SELECT
+    j.id_jogador,
+    j.nome AS nome_jogador,
+    j.posicao,
+    e.nome AS nome_equipe,
+    c.id_contrato,
+    c.data_inicio,
+    c.data_fim,
+    c.salario,
+    c.status
+FROM
+    jogadores j
+JOIN
+    contratos c ON j.id_jogador = c.id_jogador
+JOIN
+    equipes e ON c.id_equipe = e.id_equipe;
+
+-- VIEW: Exibe detalhes das partidas
+CREATE OR REPLACE VIEW vw_partidas_detalhadas AS
+SELECT
+    p.id AS id_partida,
+    p.data_hora,
+    p.estadio,
+    p.local,
+    c.nome AS competicao,
+    ec.nome AS equipe_casa,
+    ev.nome AS equipe_visitante,
+    p.placar_casa,
+    p.placar_visitante
+FROM
+    partidas p
+JOIN
+    competicoes c ON p.id_competicao = c.id_competicao
+JOIN
+    equipes ec ON p.equipe_casa_id = ec.id_equipe
+JOIN
+    equipes ev ON p.equipe_visitante_id = ev.id_equipe;
+
+-- PROCEDURE: Rescinde um contrato
+DELIMITER $$
+CREATE PROCEDURE sp_rescindir_contrato(IN p_id_contrato INT)
+BEGIN
+    UPDATE contratos
+    SET status = 'Rescindido', data_fim = CURDATE()
+    WHERE id_contrato = p_id_contrato;
+END$$
+DELIMITER ;
+
+-- TRIGGER: Log de alterações de salário
+DELIMITER $$
+CREATE TRIGGER trg_log_alteracoes_salario
+AFTER UPDATE ON contratos
+FOR EACH ROW
+BEGIN
+    IF OLD.salario <> NEW.salario THEN
+        INSERT INTO log_alteracoes_salario (id_contrato, salario_antigo, salario_novo, data_alteracao)
+        VALUES (NEW.id_contrato, OLD.salario, NEW.salario, NOW());
+    END IF;
+END$$
+DELIMITER ;

@@ -7,17 +7,7 @@ bp_partida = Blueprint('partidas', __name__, url_prefix='/partidas')
 
 @bp_partida.route('/', methods=['GET'])
 def listar_partidas():
-    query = text("""
-        SELECT p.id, p.data_hora, p.estadio, p.local,
-               p.placar_casa, p.placar_visitante,
-               ec.nome as equipe_casa_nome,
-               ev.nome as equipe_visitante_nome,
-               c.nome as competicao_nome
-        FROM partidas p
-        JOIN equipes ec ON p.equipe_casa_id = ec.id_equipe
-        JOIN equipes ev ON p.equipe_visitante_id = ev.id_equipe
-        JOIN competicoes c ON p.id_competicao = c.id_competicao
-    """)
+    query = text("SELECT * FROM vw_partidas_detalhadas")
     result = db.session.execute(query).fetchall()
     
     partidas = [{
