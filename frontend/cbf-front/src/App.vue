@@ -22,6 +22,10 @@ export default {
         { name: 'Home', path: '/' },
         { name: 'Jogadores', path: '/jogadores' },
         { name: 'Equipes', path: '/equipes' },
+        { name: 'Contratos', path: '/contratos' },
+        { name: 'Partidas', path: '/partidas' },
+        { name: 'Competições', path: '/competicoes' },
+        { name: 'Árbitros', path: '/arbitros' },
       ]
     };
   }
