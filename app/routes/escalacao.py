@@ -33,7 +33,6 @@ def escalar_jogador():
         query = text("""
             INSERT INTO escalacoes (id_partida, id_equipe, id_jogador, numero_camisa)
             VALUES (:id_partida, :id_equipe, :id_jogador, :numero_camisa)
-            RETURNING id_escalacao;
         """)
         
         result = db.session.execute(query, {
@@ -41,10 +40,10 @@ def escalar_jogador():
             "id_equipe": data['id_equipe'],
             "id_jogador": data['id_jogador'],
             "numero_camisa": data['numero_camisa']
-        }).scalar_one()
+        })
         
         db.session.commit()
-        return jsonify({'id_escalacao': result, 'mensagem': 'Jogador escalado com sucesso!'}), 201
+        return jsonify({'id_escalacao': result.lastrowid, 'mensagem': 'Jogador escalado com sucesso!'}), 201
         
     except Exception as e:
         db.session.rollback()

@@ -45,7 +45,6 @@ def criar_competicao():
         query = text("""
             INSERT INTO competicoes (nome, data_inicio, data_fim, local, organizador)
             VALUES (:nome, :data_inicio, :data_fim, :local, :organizador)
-            RETURNING id_competicao;
         """)
         
         result = db.session.execute(query, {
@@ -54,10 +53,10 @@ def criar_competicao():
             "data_fim": datetime.strptime(data['data_fim'], '%Y-%m-%d').date(),
             "local": data['local'],
             "organizador": data['organizador']
-        }).scalar_one()
+        })
         
         db.session.commit()
-        return jsonify({'id': result}), 201
+        return jsonify({'id': result.lastrowid}), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({'erro': str(e)}), 400

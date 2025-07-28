@@ -35,7 +35,6 @@ def registrar_evento():
         query = text("""
             INSERT INTO eventos_partida (id_partida, id_jogador, tipo_evento, minuto, descricao)
             VALUES (:id_partida, :id_jogador, :tipo_evento, :minuto, :descricao)
-            RETURNING id_evento;
         """)
         
         result = db.session.execute(query, {
@@ -44,10 +43,10 @@ def registrar_evento():
             "tipo_evento": data['tipo_evento'],
             "minuto": data['minuto'],
             "descricao": data.get('descricao')
-        }).scalar_one()
+        })
         
         db.session.commit()
-        return jsonify({'id_evento': result, 'mensagem': 'Evento registrado com sucesso!'}), 201
+        return jsonify({'id_evento': result.lastrowid, 'mensagem': 'Evento registrado com sucesso!'}), 201
         
     except Exception as e:
         db.session.rollback()

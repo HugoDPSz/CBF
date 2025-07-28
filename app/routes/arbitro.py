@@ -47,7 +47,6 @@ def criar_arbitro():
         query = text("""
             INSERT INTO arbitros (nome, nacionalidade, categoria, status, data_nascimento, experiencia)
             VALUES (:nome, :nacionalidade, :categoria, :status, :data_nascimento, :experiencia)
-            RETURNING id_arbitro;
         """)
         
         result = db.session.execute(query, {
@@ -57,10 +56,10 @@ def criar_arbitro():
             "status": data.get('status', 'Ativo'),
             "data_nascimento": datetime.strptime(data['data_nascimento'], '%Y-%m-%d').date(),
             "experiencia": data['experiencia']
-        }).scalar_one()
+        })
         
         db.session.commit()
-        return jsonify({'id': result}), 201
+        return jsonify({'id': result.lastrowid}), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({'erro': str(e)}), 400

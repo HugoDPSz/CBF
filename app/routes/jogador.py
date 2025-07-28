@@ -51,7 +51,6 @@ def criar_jogador():
         query = text("""
             INSERT INTO jogadores (nome, posicao, altura, peso, data_nascimento, nacionalidade, pe_preferido)
             VALUES (:nome, :posicao, :altura, :peso, :data_nascimento, :nacionalidade, :pe_preferido)
-            RETURNING id_jogador;
         """)
         
         result = db.session.execute(query, {
@@ -62,10 +61,10 @@ def criar_jogador():
             "data_nascimento": datetime.strptime(data['data_nascimento'], '%Y-%m-%d').date(),
             "nacionalidade": data['nacionalidade'],
             "pe_preferido": data.get('pe_preferido', 'Direito') 
-        }).scalar_one() 
+        })
         
         db.session.commit()
-        return jsonify({'id': result}), 201
+        return jsonify({'id': result.lastrowid}), 201
         
     except Exception as e:
         db.session.rollback()

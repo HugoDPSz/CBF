@@ -7,19 +7,20 @@ bp_partida = Blueprint('partidas', __name__, url_prefix='/partidas')
 
 @bp_partida.route('/', methods=['GET'])
 def listar_partidas():
+    """Lista as partidas utilizando a view vw_partidas_detalhadas."""
     query = text("SELECT * FROM vw_partidas_detalhadas")
     result = db.session.execute(query).fetchall()
     
     partidas = [{
-        'id': row.id,
+        'id': row.id_partida,
         'data_hora': row.data_hora.isoformat(),
         'estadio': row.estadio,
         'local': row.local,
         'placar_casa': row.placar_casa,
         'placar_visitante': row.placar_visitante,
-        'equipe_casa': row.equipe_casa_nome,
-        'equipe_visitante': row.equipe_visitante_nome,
-        'competicao': row.competicao_nome
+        'equipe_casa': row.equipe_casa,
+        'equipe_visitante': row.equipe_visitante,
+        'competicao': row.competicao
     } for row in result]
     
     return jsonify(partidas)
@@ -51,7 +52,6 @@ def criar_partida():
         query = text("""
             INSERT INTO partidas (data_hora, id_competicao, estadio, local, equipe_casa_id, equipe_visitante_id, placar_casa, placar_visitante)
             VALUES (:data_hora, :id_competicao, :estadio, :local, :equipe_casa_id, :equipe_visitante_id, :placar_casa, :placar_visitante)
-            RETURNING id;
         """)
         
         result = db.session.execute(query, {
@@ -63,10 +63,10 @@ def criar_partida():
             "equipe_visitante_id": data['equipe_visitante_id'],
             "placar_casa": data.get('placar_casa'),
             "placar_visitante": data.get('placar_visitante')
-        }).scalar_one()
+        })
         
         db.session.commit()
-        return jsonify({'id': result}), 201
+        return jsonify({'id': result.lastrowid}), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({'erro': str(e)}), 400

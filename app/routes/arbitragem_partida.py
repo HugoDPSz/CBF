@@ -31,17 +31,16 @@ def alocar_arbitro_partida():
         query = text("""
             INSERT INTO arbitragem_partidas (id_partida, id_arbitro, funcao)
             VALUES (:id_partida, :id_arbitro, :funcao)
-            RETURNING id_arbitragem;
         """)
         
         result = db.session.execute(query, {
             "id_partida": data['id_partida'],
             "id_arbitro": data['id_arbitro'],
             "funcao": data['funcao']
-        }).scalar_one()
+        })
         
         db.session.commit()
-        return jsonify({'id_arbitragem': result, 'mensagem': 'Árbitro alocado com sucesso!'}), 201
+        return jsonify({'id_arbitragem': result.lastrowid, 'mensagem': 'Árbitro alocado com sucesso!'}), 201
         
     except Exception as e:
         db.session.rollback()

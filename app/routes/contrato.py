@@ -7,17 +7,19 @@ bp_contrato = Blueprint('contratos', __name__, url_prefix='/contratos')
 
 @bp_contrato.route('/', methods=['GET'])
 def listar_contratos():
-    query = text("SELECT * FROM contratos")
+    """Lista os contratos utilizando a view vw_jogadores_contratos_ativos."""
+    query = text("SELECT * FROM vw_jogadores_contratos_ativos")
     result = db.session.execute(query).fetchall()
     
     contratos = [{
-        'id': c.id_contrato,
+        'id_contrato': c.id_contrato,
+        'id_jogador': c.id_jogador,
+        'nome_jogador': c.nome_jogador,
+        'nome_equipe': c.nome_equipe,
         'data_inicio': c.data_inicio.isoformat() if c.data_inicio else None,
         'data_fim': c.data_fim.isoformat() if c.data_fim else None,
         'salario': c.salario,
         'status': c.status,
-        'id_jogador': c.id_jogador,
-        'id_equipe': c.id_equipe
     } for c in result]
     
     return jsonify(contratos)
@@ -47,7 +49,6 @@ def criar_contrato():
         query = text("""
             INSERT INTO contratos (id_jogador, id_equipe, data_inicio, data_fim, salario, status)
             VALUES (:id_jogador, :id_equipe, :data_inicio, :data_fim, :salario, :status)
-            RETURNING id_contrato;
         """)
         
         result = db.session.execute(query, {
@@ -57,10 +58,10 @@ def criar_contrato():
             "data_fim": datetime.strptime(data['data_fim'], '%Y-%m-%d').date(),
             "salario": data['salario'],
             "status": data.get('status', 'Ativo')
-        }).scalar_one()
+        })
         
         db.session.commit()
-        return jsonify({'id': result}), 201
+        return jsonify({'id': result.lastrowid}), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({'erro': str(e)}), 400
@@ -126,7 +127,7 @@ def criar_contrato_procedure():
     except Exception as e:
         db.session.rollback()
         return jsonify({'erro': str(e)}), 400
-    
+        
 @bp_contrato.route('/<int:id>/rescindir', methods=['PUT'])
 def rescindir_contrato(id):
     """Rescinde um contrato utilizando a stored procedure."""

@@ -45,7 +45,6 @@ def criar_equipe():
         query = text("""
             INSERT INTO equipes (nome, sigla, cidade, estado, data_fundacao)
             VALUES (:nome, :sigla, :cidade, :estado, :data_fundacao)
-            RETURNING id_equipe;
         """)
         
         result = db.session.execute(query, {
@@ -54,10 +53,10 @@ def criar_equipe():
             "cidade": data['cidade'],
             "estado": data['estado'],
             "data_fundacao": datetime.strptime(data['data_fundacao'], '%Y-%m-%d').date()
-        }).scalar_one()
+        })
         
         db.session.commit()
-        return jsonify({'id': result}), 201
+        return jsonify({'id': result.lastrowid}), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({'erro': str(e)}), 400
