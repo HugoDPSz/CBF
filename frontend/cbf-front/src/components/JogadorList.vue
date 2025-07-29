@@ -11,7 +11,7 @@
 
       <template v-slot:[`item.actions`]="{ item }">
           
-          <v-icon small class="mr-2" @click="checkContrato(item.id)">mdi-plus</v-icon>
+          <v-icon small class="mr-2" @click="checkContrato(item.id)">mdi-file-document</v-icon>
           <v-icon small class="mr-2" @click="editJogador(item)">mdi-pencil</v-icon>
           <v-icon small color="red" @click="deleteJogador(item.id)">mdi-delete</v-icon>
         </template>
@@ -32,7 +32,7 @@
         <v-btn v-if="editing" color="grey" class="mt-4 ml-2" @click="cancelEdit">Cancelar</v-btn>
       </v-form>
     </v-card>
-     <v-dialog v-model="dialog" max-width="600px">
+    <v-dialog v-model="dialog" max-width="600px">
     
     <v-card>
       <v-card-title> Contrato</v-card-title>
@@ -77,6 +77,7 @@ export default {
     return {
       jogadores: [],
       equipes: [],
+      contratos: [],
       headers: [
         { text: 'Nome', value: 'nome' },
         { text: 'Posição', value: 'posicao' },
@@ -116,6 +117,12 @@ export default {
         .then(data => (this.jogadores = data))
         .catch(err => console.error(err));
     },
+    fetchContratos() {
+      fetch('http://127.0.0.1:5000/contratos/')
+        .then(res => res.json())
+        .then(data => (this.contratos = data))
+        .catch(err => console.error(err));
+    },
     fetchEquipes() {
       fetch('http://127.0.0.1:5000/equipes/')
         .then(res => res.json())
@@ -123,12 +130,13 @@ export default {
         .catch(err => console.error(err));
     },
     checkContrato(jogadorId) {
-      const url = 'http://127.0.0.1:5000/contratos/'+ `${jogadorId}`;
+      const url = 'http://127.0.0.1:5000/contratos/jogador/'+ `${jogadorId}`;
       try {
         fetch(url)
           .then(res => res.json())
           .then(data => (this.contrato = data))
-          .catch(err => console.error(err));      
+          .catch(err => console.error(err));
+                
       } catch (error) {
         this.contrato = {
         id_jogador: jogadorId,
